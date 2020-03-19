@@ -70,26 +70,27 @@ while cv2.waitKey(1) < 0:
         genderNet.setInput(blob)
         genderPreds = genderNet.forward()
         gender = genderList[genderPreds[0].argmax()]
-        print(f'Gender: {gender}')
+        #print(f'Gender: {gender}')
 
         ageNet.setInput(blob)
         agePreds = ageNet.forward()
         age = ageList[agePreds[0].argmax()]
-        print(f'Age: {age[1:-1]} years')
+        # print(f'Age: {age[1:-1]} years')
+
+        
 
         # displaying the adjusted image with added facebox and text, font, BRG (Blue,green,red ~ 0-255), thickness
         cv2.putText(resultImg, f'{gender}, {age}', (
             faceBox[0], faceBox[1]-10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2, cv2.LINE_4)
         cv2.imshow("BiasedAI POC", resultImg)
+ # Post data
+api = "http://localhost:8083/PersonData"
+params = {"age": age,
+"gender": gender}
+try:
+    r = requests.post(url= api,data=params)
+    print(r.text)
 
-# Post data
-url = "localhost:8083/PersonData"
-payload = {"age": age,
-           "gender": gender}
+except requests.exceptions.RequestException as e:  # This is the correct syntax
+    print(e)
 
-header = {"Content-type": "application/x-www-form-urlencoded",
-          "Accept": "text/plain"}
-
-response_decoded_json = requests.post(url, data=payload, headers=header)
-response_json = response_decoded_json.json()
-print(response_json)
