@@ -1,9 +1,9 @@
+from deepface import DeepFace
 import cv2
 import math
 import argparse
 import requests
 import json
-
 
 def highlightFace(net, frame, conf_threshold=0.7):
     frameOpencvDnn = frame.copy()
@@ -35,19 +35,9 @@ args = parser.parse_args()
 
 faceProto = "opencv_face_detector.pbtxt"
 faceModel = "opencv_face_detector_uint8.pb"
-ageProto = "age_deploy.prototxt"
-ageModel = "age_net.caffemodel"
-genderProto = "gender_deploy.prototxt"
-genderModel = "gender_net.caffemodel"
-
-MODEL_MEAN_VALUES = (78.4263377603, 87.7689143744, 114.895847746)
-ageList = ['(0-2)', '(4-6)', '(8-12)', '(15-20)',
-           '(25-32)', '(38-43)', '(48-53)', '(60-100)']
-genderList = ['Male', 'Female']
 
 faceNet = cv2.dnn.readNet(faceModel, faceProto)
-ageNet = cv2.dnn.readNet(ageModel, ageProto)
-genderNet = cv2.dnn.readNet(genderModel, genderProto)
+
 
 video = cv2.VideoCapture(args.image if args.image else 0)
 padding = 20
@@ -65,27 +55,28 @@ while cv2.waitKey(1) < 0:
         face = frame[max(0, faceBox[1]-padding):
                      min(faceBox[3]+padding, frame.shape[0]-1), max(0, faceBox[0]-padding):min(faceBox[2]+padding, frame.shape[1]-1)]
 
-        blob = cv2.dnn.blobFromImage(
-            face, 1.0, (227, 227), MODEL_MEAN_VALUES, swapRB=False)
-        genderNet.setInput(blob)
-        genderPreds = genderNet.forward()
-        gender = genderList[genderPreds[0].argmax()]
-        #print(f'Gender: {gender}')
-
-        ageNet.setInput(blob)
-        agePreds = ageNet.forward()
-        age = ageList[agePreds[0].argmax()]
-        # print(f'Age: {age[1:-1]} years')
+        cv2.imwrite('data/test.jpg', face)
 
         # displaying the adjusted image with added facebox and text, font, BRG (Blue,green,red ~ 0-255), thickness
-        cv2.putText(resultImg, f'{gender}, {age}', (
+        cv2.putText(resultImg,"Ready to analyze!", (
             faceBox[0], faceBox[1]-10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2, cv2.LINE_4)
         cv2.imshow("BiasedAI POC", resultImg)
+
+#demography = DeepFace.analyze("img4.jpg", ['age', 'gender', 'race', 'emotion']) 
+#identical to the line above passing nothing as 2nd argument will find everything
+try: 
+    demography = DeepFace.analyze("data/test.jpg",['age','gender','race']) 
+    print(f'{demography["age"]}, {demography["gender"]},{demography["dominant_race"]}')
+except Exception as e:
+    print(e)
+
  # Post data
-api = "http://localhost:8083/PersonData"
-params = {"age": age,
-"gender": gender}
 try:
+    api = "http://localhost:8083/PersonData"
+    params = {"age": demography["age"],
+    "gender": demography["gender"],
+    "race":demography["dominant_race"],
+    }
     r = requests.post(url= api,data=params)
     print(r.text)
 
